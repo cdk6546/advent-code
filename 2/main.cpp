@@ -6,12 +6,20 @@
 
 using namespace std;
 
-//part 1: 1 incorrect submit
+// part 1: 1 incorrect submit
 // part 2: 6 incorrect submits
 
+// holds the original read-in values
 vector<vector<int>> nums;
+
+// holds the reports that have incorrect levels
 vector<vector<int>> invalid_levels;
 
+
+/** 
+	reads the input file and feeds the data
+	into the global nums variable
+**/
 void read_file(){
 	ifstream File("input");
 	
@@ -31,6 +39,10 @@ void read_file(){
 	File.close();
 }
 
+/**
+	helper function that prints the nums array
+	for testing
+**/
 void print_rows(){
 	// for each row in the nums array, iterate by reference not by copy
 	for (const auto& row : nums) {
@@ -44,6 +56,10 @@ void print_rows(){
 	  }
 }
 
+/**
+	helper function that prints the levels array
+	for testing
+**/
 void print_levels(vector<int> levels){
 	// for each level in the levels array, iterate by reference not by copy
 	for (const auto& level : levels) {
@@ -52,70 +68,13 @@ void print_levels(vector<int> levels){
 	cout << '\n';
 }
 
-int dampen(){
-	cout << "---------------------------\n";
-	int valid_reports = 0;
-	
-	for(vector<int> row : invalid_levels){
-	   for (size_t i = 0; i < row.size(); i++) {
-	        vector<int> row_copy(row.begin(), row.end());
-	        row_copy.erase(row_copy.begin() + i);
-	        
-			vector<int> levels;
-			for (size_t z = 0; z < row_copy.size(); z++) {
-				if(z > 0 && z < row_copy.size() - 1){
-					// int left_center = row[z] - row[z-1];
-					int right_center = row_copy[z+1] - row_copy[z];
-					// levels.push_back(left_center);
-					levels.push_back(right_center);
-				}
-				else if(z == 0){
-					int right_center = row_copy[z+1] - row_copy[z];
-					levels.push_back(right_center);
-				}
-				else if(z == row_copy.size() - 1){
-					int left_center = row_copy[z] - row_copy[z-1];
-					levels.push_back(left_center);
-				}
-			}
-					
-			bool all_pos = true;
-			bool all_neg = true;
-			bool distance_valid = true;
-			print_levels(levels);
-			
-			for (const auto& level : levels){
-				if(level > 0){
-					all_neg = false;
-				}
-				if(level < 0){
-					all_pos = false;
-				}
-				if (abs(level) < 1 || abs(level) > 3){
-					distance_valid = false;
-				}	
-			}
-
-			cout << "\n" << "all_pos: " << all_pos << " all_neg: " << all_neg << " distance_valid: " << distance_valid << "\n";
-					
-			if((all_pos || all_neg) && distance_valid){
-				valid_reports +=1;
-				break;
-			}
-					
-		}
-	}
-	return valid_reports;
-}
-
-int analyze_reports(){
-	int valid_reports = 0;
-
-	// for each row in the nums array, iterate by reference not by copy
-	for (const auto& row : nums) {
-	// loop until the row's size
-		vector<int> levels;
-		for (size_t z = 0; z < row.size(); z++) {
+/**
+	do the calculations between levels
+	@return a vector of integers holding the calculations per row
+**/
+vector<int> initialize_levels(vector<int> row){
+	vector<int> levels;
+	for (size_t z = 0; z < row.size(); z++) {
 			if(z > 0 && z < row.size() - 1){
 				// int left_center = row[z] - row[z-1];
 				int right_center = row[z+1] - row[z];
@@ -129,34 +88,82 @@ int analyze_reports(){
 			else if(z == row.size() - 1){
 				int left_center = row[z] - row[z-1];
 				levels.push_back(left_center);
-			}  		
+			}
 		}
-		
-		bool all_pos = true;
-		bool all_neg = true;
-		bool distance_valid = true;
+	return levels;
+}
 
-		for (const auto& level : levels){
-			cout << to_string(level) << ',';
-			if(level > 0){
-				all_neg = false;
-			}
-			if(level < 0){
-				all_pos = false;
-			}
-			if (abs(level) < 1 || abs(level) > 3){
-				distance_valid = false;
-			}	
+/**
+	checks if level calulations are valid
+	@return whether the set of level calculations are valid
+**/
+bool check_validity(vector<int> levels){
+	bool all_pos = true;
+	bool all_neg = true;
+	bool distance_valid = true;
+	
+	for (const auto& level : levels){
+		if(level > 0){
+			all_neg = false;
 		}
-		// cout << "\n" << "all_pos: " << all_pos << " all_neg: " << all_neg << " distance_valid: " << distance_valid << "\n";
-		if((all_pos || all_neg) && distance_valid){
+		if(level < 0){
+			all_pos = false;
+		}
+		if (abs(level) < 1 || abs(level) > 3){
+			distance_valid = false;
+		}	
+	}
+			
+	if((all_pos || all_neg) && distance_valid){
+		return true;
+	}
+	return false;
+
+}
+
+/**
+	allows for ONE element to be removed to make a report valid
+	@return the number of incorrect reports corrected by this rule
+**/
+int dampen(){
+	int valid_reports = 0;	
+	for(vector<int> row : invalid_levels){
+	   for (size_t i = 0; i < row.size(); i++) {
+	        vector<int> row_copy(row.begin(), row.end());
+	        row_copy.erase(row_copy.begin() + i);
+	        
+			vector<int> levels = initialize_levels(row_copy);
+					
+			if(check_validity(levels) == true){
+				valid_reports +=1;
+				break;
+			}
+		}
+	}
+	return valid_reports;
+}
+
+/**
+	checks the original set of calculations for validity
+	invalid reports get appended to the invalid_levels
+	global variable
+	@return the number of valid reports without dampening
+**/
+int analyze_reports(){
+	int valid_reports = 0;
+
+	// for each row in the nums array, iterate by reference not by copy
+	for (const vector<int>& row : nums) {
+	// loop until the row's size
+		vector<int> levels = initialize_levels(row);
+		
+		if(check_validity(levels) == true){
 			valid_reports +=1;
 		}
 		else{
 			invalid_levels.push_back(row);
 		}
 	}
-	cout << "valid reports without dampener: " << valid_reports << '\n';
 	return valid_reports;
 }
 
